@@ -34,8 +34,8 @@
   <script setup>
   import { ref, onMounted } from 'vue'
   
-  const launchTime = new Date('Mon Jan 13, 2025 23:08:00 GMT+0800') 
-  const launchName = 'Starlink Group 12-4'
+  const launchTime = new Date('Wed Jan 15 2025 22:00:00 GMT+0000')
+  const launchName = 'Starship Flight 7'
   
   const countdown = ref({
     days: 0,

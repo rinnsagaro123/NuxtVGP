@@ -9,7 +9,7 @@
 		<p class="description">
 		  Explore the latest innovations in space exploration, view detailed launch data, and track upcoming SpaceX missions in real-time. With the power of GraphQL, you can easily access precise information about rockets, launches, and more!
 		</p>
-		<v-btn color="deep-purple lighten-2" large to="/launches">
+		<v-btn color="deep-purple lighten-2" large to="/launches"  target="_blank">
 		  Start with Launches
 		</v-btn>
 	  </div>

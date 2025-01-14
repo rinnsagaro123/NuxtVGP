@@ -9,10 +9,11 @@
             <v-text-field
               v-model="searchTerm"
               label="Search Launches"
-              prepend-icon="mdi-magnify"
-              clearable
+              prepend-inner-icon="mdi-magnify"
+              append-inner-icon="mdi-close-circle"
               dense
               class="mb-4"
+              @click:append-inner="clearSearchTerm"
               @input="setSearchTerm(searchTerm)"
             ></v-text-field>
           </v-col>
@@ -152,7 +153,7 @@ const { data, error } = useAsyncQuery<{
 }>(query)
 
 const launches = computed(() => data.value?.launches ?? [])
-const { selectedYear, selectedSortOrder, filteredLaunches, setSelectedYear, setSelectedSortOrder, setSearchTerm } = useLaunchFilter(launches.value)
+const { selectedYear, selectedSortOrder, filteredLaunches, setSelectedYear, setSelectedSortOrder, setSearchTerm, clearSearchTerm } = useLaunchFilter(launches.value)
 
 const tableHeaders = [
   { title: '#', key: 'number', width: 50 },

@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 export function useLaunchFilter(launches: any[]) {
   const selectedYear = ref('')
@@ -9,7 +9,9 @@ export function useLaunchFilter(launches: any[]) {
     const sortedLaunches = [...launches]
 
     const filteredByYear = selectedYear.value
-      ? sortedLaunches.filter((launch) => new Date(launch.launch_date_utc).getFullYear() === Number(selectedYear.value))
+      ? sortedLaunches.filter((launch) =>
+          new Date(launch.launch_date_utc).getFullYear() === Number(selectedYear.value)
+        )
       : sortedLaunches
 
     const filteredBySearch = filteredByYear.filter((launch) =>
@@ -27,7 +29,6 @@ export function useLaunchFilter(launches: any[]) {
     })
   })
 
-
   const setSelectedYear = (year: string) => {
     selectedYear.value = year
   }
@@ -37,15 +38,21 @@ export function useLaunchFilter(launches: any[]) {
   }
 
   const setSearchTerm = (term: string) => {
-    searchTerm.value = term
+    searchTerm.value = term 
+  }
+
+  const clearSearchTerm = () => {
+    searchTerm.value = '' 
   }
 
   return {
     selectedYear,
     selectedSortOrder,
+    searchTerm,
     filteredLaunches,
     setSelectedYear,
     setSelectedSortOrder,
     setSearchTerm,
+    clearSearchTerm,
   }
 }

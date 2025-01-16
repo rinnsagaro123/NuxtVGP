@@ -2,7 +2,13 @@
   <v-container>
     <h1>SpaceX Launches</h1>
 
-    <div>
+    <!-- Loading Spinner -->
+    <div v-if="loading" class="d-flex justify-center align-center" style="height: 100vh;">
+      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+    </div>
+
+    <!-- Content -->
+    <div v-else>
       <v-container>
         <v-row>
           <v-col cols="12" sm="4" md="4">
@@ -43,70 +49,77 @@
       </v-container>
 
       <v-container>
-  <v-row class="my-4 justify-end align-center">
-    <v-col cols="auto" class="d-flex align-center">
-      <span> Items per Page:  </span>
-      <v-select
-        v-model="itemsPerPage"
-        :items="[10, 25, 50, 100, 'All']"
-        @change="setItemsPerPage"
-        dense
-        outlined
-        hide-details
-        style="max-width: 150px; font-size: 10px;"
-      ></v-select>
-    </v-col>
+        <v-row>
+          <v-col
+            v-for="(launch, index) in paginatedLaunches"
+            :key="launch.id"
+            cols="12"
+            sm="6"
+            md="4"
+          >
+            <v-card outlined class="elevation-6">
+              <template v-if="launch.links?.flickr_images?.[0]">
+                <v-img
+                  :src="launch.links.flickr_images[0]"
+                  height="200px"
+                  contain
+                ></v-img>
+              </template>
+              <template v-else>
+                <div
+                  style="display: flex; justify-content: center; align-items: center; height: 200px; background-color: #f0f0f0; color: #888; font-size: 14px;"
+                >
+                  No Image Available
+                </div>
+              </template>
+              <v-card-title class="text-h6">
+                {{ launch.mission_name || 'No mission name' }}
+              </v-card-title>
 
-    <v-col cols="auto" class="d-flex align-center">
-      <span style="font-size: 15px; margin-right: 16px;">
-        {{ paginationSummary }}
-      </span>
-    </v-col>
+              <v-card-subtitle>
+                Launch Date: {{ new Date(launch.launch_date_utc).toLocaleDateString() }}
+              </v-card-subtitle>
 
-    <v-col cols="auto" class="d-flex align-center">
-      <v-btn @click="goToStart" :disabled="pagination.page === 1" text small>
-        <span class="mdi mdi-chevron-double-left small-icon"></span> <!-- |< -->
-      </v-btn>
-      <v-btn @click="goToPrev" :disabled="pagination.page === 1" text small>
-        <span class="mdi mdi-chevron-left small-icon"></span> <!-- < -->
-      </v-btn>
-      <v-btn @click="goToNext" :disabled="pagination.page === totalPages" text small>
-        <span class="mdi mdi-chevron-right small-icon"></span> <!-- > -->
-      </v-btn>
-      <v-btn @click="goToEnd" :disabled="pagination.page === totalPages" text small>
-        <span class="mdi mdi-chevron-double-right small-icon"></span> <!-- >| -->
-      </v-btn>
-    </v-col>
+              <v-card-text>
+                <p>
+                  <strong>Launch Site:</strong> {{ launch.launch_site?.site_name_long || 'No site information' }}
+                </p>
+                <p>
+                  <strong>Rocket:</strong> {{ launch.rocket?.rocket_name || 'No rocket information' }}
+                </p>
+                <p>
+                  <strong>Details:</strong>
+                  <span v-if="!expandedCards[index]">
+                    {{ truncatedDescription(launch.details) }}
+                    <span @click="toggleDetails(index)" class="see-more-link">See More</span>
+                  </span>
+                  <span v-else>
+                    {{ launch.details || placeholderDetails }}
+                    <span @click="toggleDetails(index)" class="see-more-link">See Less</span>
+                  </span>
+                </p>
+              </v-card-text>
 
+              <v-card-actions>
+                <nuxt-link
+                  :to="`/rocket/${launch.rocket?.rocket?.id}`"
+                  v-if="launch.rocket?.rocket?.id"
+                >
+                <v-btn text small color="#673AB7">View Rocket Details</v-btn>
+                </nuxt-link>
+              </v-card-actions>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
 
-
-
-  </v-row>
-</v-container>
-      <v-responsive>
-        <v-data-table
-          :items="paginatedLaunches"
-          :headers="tableHeaders"
-          :items-per-page="itemsPerPage === 'All' ? filteredLaunches.length : itemsPerPage"
-          class="mt-5"
-          dense
-        >
-          <template #item.number="{ index }">
-            {{ (pagination.page - 1) * (itemsPerPage === 'All' ? filteredLaunches.length : itemsPerPage) + index + 1 }}
-          </template>
-          <template #item.launch_site="{ item }">
-            {{ item.launch_site?.site_name_long || 'No site information available' }}
-          </template>
-          <template #item.rocket="{ item }">
-            <nuxt-link :to="`/rocket/${item.rocket?.rocket?.id}`">
-              {{ item.rocket?.rocket_name || 'No rocket information available' }}
-            </nuxt-link>
-          </template>
-          <template #item.details="{ item }">
-            {{ item.details || 'No details available' }}
-          </template>
-        </v-data-table>
-      </v-responsive>
+      <!-- Pagination Controls -->
+      <v-pagination
+        v-model="currentPage"
+        :length="totalPages"
+        :total-visible="5"
+        @input="paginate"
+      ></v-pagination>
     </div>
   </v-container>
 </template>
@@ -123,6 +136,9 @@ const query = gql`
       launch_site {
         site_name_long
       }
+      links {
+        flickr_images
+      }
       rocket {
         rocket {
           id
@@ -134,7 +150,7 @@ const query = gql`
   }
 `
 
-const { data, error } = useAsyncQuery<{
+const { data, error, loading } = useAsyncQuery<{
   launches: {
     id: string
     mission_name: string
@@ -142,6 +158,9 @@ const { data, error } = useAsyncQuery<{
     launch_site: {
       site_name_long: string | null
     } | null
+    links: {
+      flickr_images: string | null
+    }
     rocket: {
       rocket: {
         id: string
@@ -149,82 +168,61 @@ const { data, error } = useAsyncQuery<{
       rocket_name: string | null
     } | null
     details?: string | null
-  }[]
+  }[] 
 }>(query)
 
 const launches = computed(() => data.value?.launches ?? [])
 const { selectedYear, selectedSortOrder, filteredLaunches, setSelectedYear, setSelectedSortOrder, setSearchTerm, clearSearchTerm } = useLaunchFilter(launches.value)
-
-const tableHeaders = [
-  { title: '#', key: 'number', width: 50 },
-  { title: 'Mission Name', key: 'mission_name' },
-  { title: 'Launch Date', key: 'launch_date_utc' },
-  { title: 'Launch Site', key: 'launch_site' },
-  { title: 'Rocket', key: 'rocket' },
-  { title: 'Details', key: 'details' },
-]
 
 const yearOptions = computed(() => {
   const years = launches.value.map(launch => new Date(launch.launch_date_utc).getFullYear())
   return [...new Set(years)].sort((a, b) => b - a)
 })
 
-const itemsPerPage = ref('All')  // Default: Show all
-const pagination = ref({ page: 1 })
+const expandedCards = ref<boolean[]>([])
 
-const totalPages = computed(() => {
-  const count = filteredLaunches.value.length
-  return Math.ceil(count / (itemsPerPage.value === 'All' ? count : itemsPerPage.value))
-})
+const placeholderDetails = 'No details available. More information about this launch will be updated soon.'
 
-const paginationSummary = computed(() => {
-  const totalItems = filteredLaunches.value.length
-  const startItem = (pagination.value.page - 1) * (itemsPerPage.value === 'All' ? totalItems : itemsPerPage.value) + 1
-  const endItem = Math.min(startItem + (itemsPerPage.value === 'All' ? totalItems : itemsPerPage.value) - 1, totalItems)
-
-  return `${startItem}-${endItem} of ${totalItems}`
-})
+const currentPage = ref(1)
+const perPage = 6
+const totalPages = computed(() => Math.ceil(filteredLaunches.value.length / perPage))
 
 const paginatedLaunches = computed(() => {
-  const startIndex = (pagination.value.page - 1) * (itemsPerPage.value === 'All' ? filteredLaunches.value.length : itemsPerPage.value)
-  const endIndex = startIndex + (itemsPerPage.value === 'All' ? filteredLaunches.value.length : itemsPerPage.value)
-  return filteredLaunches.value.slice(startIndex, endIndex)
+  const start = (currentPage.value - 1) * perPage
+  return filteredLaunches.value.slice(start, start + perPage)
 })
 
-function setItemsPerPage(value: number | 'All') {
-  itemsPerPage.value = value
-  pagination.value.page = 1
+function truncatedDescription(description: string | null): string {
+  if (!description) return placeholderDetails.slice(0, 100)
+  return description.length > 100 ? `${description.slice(0, 100)}...` : description
 }
 
-function goToStart() {
-  pagination.value.page = 1
+function toggleDetails(index: number): void {
+  expandedCards.value[index] = !expandedCards.value[index]
 }
 
-function goToPrev() {
-  if (pagination.value.page > 1) pagination.value.page -= 1
-}
-
-function goToNext() {
-  if (pagination.value.page < totalPages.value) pagination.value.page += 1
-}
-
-function goToEnd() {
-  pagination.value.page = totalPages.value
+function paginate(page: number): void {
+  currentPage.value = page
 }
 </script>
 
 <style scoped>
+.v-card-text {
+  transition: height 0.3s ease, overflow 0.3s ease;
+}
 .v-btn.small {
-  font-size: 12px; 
+  font-size: 12px;
   padding: 2px 6px;
-  min-height: 24px; 
+  min-height: 24px;
   min-width: 24px;
-  border-radius: 12px; 
+  border-radius: 12px;
 }
-
-.small-icon {
-  font-size: 16px; 
+.see-more-link {
+  color: #673AB7;
+  cursor: pointer;
+  text-decoration: none;
 }
-
-
+.see-more-link:hover {
+  text-decoration: underline;
+}
 </style>

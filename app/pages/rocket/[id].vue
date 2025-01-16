@@ -81,6 +81,13 @@ function toggleFavorite() {
 
   router.push('/favorites');
 }
+function goBack() {
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push('/'); // Default route if no history
+  }
+}
 
 </script>
 
@@ -124,6 +131,9 @@ function toggleFavorite() {
         </v-list>
       </v-card-text>
     </v-card>
+    <v-btn color="deep-purple lighten-2" @click="goBack" class="mb-4">
+      Back
+    </v-btn>
   </v-container>
 </template>
 
